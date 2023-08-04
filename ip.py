@@ -2,6 +2,11 @@ from iputils import *
 #biblioteca dita como melhor para fazer operacoes com endereços de ip
 import ipaddress
 
+class CIDR:
+    def __init__(self, cidr):
+        self.address, self.n = tuple(cidr.split('/'))
+        self.n = int(self.n)
+        self.prefix = int.from_bytes(str2addr(self.address), 'big') >> 32 - self.n
 
 class IP:
     def __init__(self, enlace):
@@ -15,7 +20,7 @@ class IP:
         self.enlace.registrar_recebedor(self.__raw_recv)
         self.ignore_checksum = self.enlace.ignore_checksum
         self.meu_endereco = None
-        self.tabela_encaminhamento = {}
+        self.id = 0
 
     def __raw_recv(self, datagrama):
         dscp, ecn, identification, flags, frag_offset, ttl, proto, \
@@ -54,17 +59,14 @@ class IP:
             self.enlace.enviar(datagrama, next_hop)
 
     def _next_hop(self, dest_addr):
-        maior_prefixo = 0
-        next_hop_f = None
-
-        for cidr, next_hop in self.tabela_encaminhamento.itens():
-            network, tam_prefixo = ipaddress.ip_network(cidr)
-            tam_prefixo = int(tam_prefixo)
-            if tam_prefixo > maior_prefixo:
-                maior_prefixo = tam_prefixo
-                next_hop_f = next_hop
-
-        return next_hop_f
+        next_hop = None
+        max_n = -1
+        for cidr in self.tabela:
+            if int.from_bytes(str2addr(dest_addr), 'big') >> 32 - cidr.n == cidr.prefix:
+                if cidr.n > max_n:
+                    next_hop = self.tabela[cidr]
+                    max_n = cidr.n
+        return next_hop
 
 
     def definir_endereco_host(self, meu_endereco):
@@ -83,9 +85,10 @@ class IP:
         Onde os CIDR são fornecidos no formato 'x.y.z.w/n', e os
         next_hop são fornecidos no formato 'x.y.z.w'.
         """
-
-        for cidr, next_hop in tabela:
-            self.tabela_encaminhamento[cidr] = next_hop
+        self.tabela = {}
+        for x in tabela:
+            cidr, next_hop = x
+            self.tabela[CIDR(cidr)] = next_hop
 
 
     def registrar_recebedor(self, callback):
