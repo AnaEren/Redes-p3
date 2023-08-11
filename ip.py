@@ -41,7 +41,7 @@ class IP:
                 #remetente - src_addr
                 # 11 - flag pra indicar o problema la
                 checksum = calc_checksum(struct.pack('>BBHI', 11, 0, 0, 0) + datagrama[:28])
-                self.enviar((struct.pack('>BBHI', 11, 0, 0, 0) + datagrama[:28]), src_addr, 1)
+                self.enviar((struct.pack('>BBHI', 11, 0, 0, checksum) + datagrama[:28]), src_addr, 1)
                 return
             
             #  nesse caso ja tem as infos prontas separadas  - cabecalho bem explicado no "enviar"
